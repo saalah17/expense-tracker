@@ -2,8 +2,26 @@ import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import AntDesign from "@expo/vector-icons/AntDesign";
+import { AuthContext } from "../../contexts/authContext";
+import { useContext } from "react";
+import { Redirect } from "expo-router";
+import { View, ActivityIndicator } from "react-native";
 
 export default function Layout() {
+  const { userToken, isLoading } = useContext(AuthContext);
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (!userToken) {
+    return <Redirect href="/login" />;
+  }
+
   return (
     <Tabs screenOptions={{ headerShown: false }}>
       <Tabs.Screen

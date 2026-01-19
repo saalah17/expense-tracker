@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -8,29 +8,24 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+// import { useAI } from "../contexts/AIContext"; // Adjust path based on your folder structure
+import { useAI } from "../../contexts/aiContext";
 
 const AIChatScreen = () => {
   const [message, setMessage] = useState("");
+  const { chatHistory, isTyping, sendMessage, clearChat } = useAI();
+  const scrollViewRef = useRef();
 
-  const chatHistory = [
-    {
-      id: 1,
-      role: "ai",
-      text: "Hi Alex! I've analyzed your spending for January. You've spent $120 more on Dining Out than usual. Want to see a breakdown?",
-    },
-    {
-      id: 2,
-      role: "user",
-      text: "Yes, please. And can you suggest a budget for next week?",
-    },
-    {
-      id: 3,
-      role: "ai",
-      text: "Based on your fixed bills, I recommend a limit of $150 for leisure. I can set a notification alert for this if you'd like! ⚡",
-    },
-  ];
+  const handleSend = async () => {
+    if (!message.trim() || isTyping) return;
+
+    const userText = message;
+    setMessage(""); // Clear input immediately for better UX
+    await sendMessage(userText);
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
@@ -45,19 +40,30 @@ const AIChatScreen = () => {
               Gemini Finance
             </Text>
             <View className="flex-row items-center">
-              <View className="h-2 w-2 bg-emerald-500 rounded-full mr-1.5" />
+              <View
+                className={`h-2 w-2 rounded-full mr-1.5 ${
+                  isTyping ? "bg-amber-400" : "bg-emerald-500"
+                }`}
+              />
               <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-tighter">
-                AI Assistant Active
+                {isTyping ? "Gemini is thinking..." : "AI Assistant Active"}
               </Text>
             </View>
           </View>
         </View>
-        <TouchableOpacity className="p-2">
-          <Ionicons name="ellipsis-horizontal" size={20} color="#64748B" />
+        <TouchableOpacity
+          onPress={clearChat}
+          className="p-2 bg-slate-50 rounded-full"
+        >
+          <Ionicons name="trash-outline" size={20} color="#64748B" />
         </TouchableOpacity>
       </View>
 
       <ScrollView
+        ref={scrollViewRef}
+        onContentSizeChange={() =>
+          scrollViewRef.current.scrollToEnd({ animated: true })
+        }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
       >
@@ -90,32 +96,22 @@ const AIChatScreen = () => {
                 item.role === "user" ? "text-right" : "text-left"
               }`}
             >
-              {item.role === "user" ? "You" : "Gemini AI"} • 10:24 AM
+              {item.role === "user" ? "You" : "Gemini AI"}
             </Text>
           </View>
         ))}
 
-        {/* Suggestion Chips */}
-        <View className="mt-4 flex-row flex-wrap gap-2">
-          {["Analyze Subscriptions", "Monthly Forecast", "Savings Tips"].map(
-            (chip) => (
-              <TouchableOpacity
-                key={chip}
-                className="bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-2xl"
-              >
-                <Text className="text-indigo-600 font-bold text-xs">
-                  {chip}
-                </Text>
-              </TouchableOpacity>
-            )
-          )}
-        </View>
+        {isTyping && (
+          <View className="self-start mb-6 bg-white border border-slate-100 p-4 rounded-[28px] rounded-tl-none shadow-sm">
+            <ActivityIndicator size="small" color="#6366F1" />
+          </View>
+        )}
       </ScrollView>
 
       {/* Input Area */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={90}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
         <View className="p-4 bg-white border-t border-slate-100 flex-row items-center">
           <TouchableOpacity className="bg-slate-100 h-12 w-12 rounded-2xl items-center justify-center mr-3">
@@ -141,12 +137,13 @@ const AIChatScreen = () => {
           </View>
 
           <TouchableOpacity
+            onPress={handleSend}
+            disabled={message.length === 0 || isTyping}
             className={`ml-3 h-12 w-12 rounded-2xl items-center justify-center shadow-lg ${
-              message.length > 0
+              message.length > 0 && !isTyping
                 ? "bg-indigo-600 shadow-indigo-200"
                 : "bg-slate-200"
             }`}
-            disabled={message.length === 0}
           >
             <Ionicons name="send" size={20} color="white" />
           </TouchableOpacity>
